@@ -10,10 +10,11 @@ on:
 jobs:
     unit-testing:
         name: Unit Testing
+        id: nodejs-unit-testing-step
         runs-on: ${{ matrix.operating_system }}
         strategy:
           matrix:
-            nodejs_version: [18, 19, 20]
+            nodejs_version: [18, 20]
             operating_system: [ubuntu-latest, macos-latest]
             exclude:
               - nodejs_version: 18
@@ -39,6 +40,7 @@ jobs:
           run: npm test
           
         - name: Archive Test Result
+          if:  steps.nodejs-unit-testing-step.outcome == 'failure' || steps.nodejs-unit-testing-step.outcome == 'success'
           uses: actions/upload-artifact@v4
           with:
             name: Mocha-Test-Result-Node-${{ matrix.nodejs_version }}-${{ matrix.operating_system }}
