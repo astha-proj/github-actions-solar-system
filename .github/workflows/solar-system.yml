@@ -36,7 +36,7 @@ jobs:
           uses: actions/cache@v4
           with:
             path: node_modules
-            key: ${{ runner.os }}-node-${{ matrix.nodejs_version }}-modules-${{ hashFiles('package-lock.json') }}
+            key: v2-${{ runner.os }}-node-${{ matrix.nodejs_version }}-modules-${{ hashFiles('package-lock.json') }}
 
         - name: Install Dependencies
           run: npm install
@@ -71,7 +71,7 @@ jobs:
           uses: actions/cache@v4
           with:
             path: node_modules
-            key: ${{ runner.os }}-node-18-modules-${{ hashFiles('package-lock.json') }}
+            key: v2-${{ runner.os }}-node-18-modules-${{ hashFiles('package-lock.json') }}
 
         - name: Install Dependencies
           run: npm install
@@ -92,3 +92,17 @@ jobs:
         - name: Fail if Code Coverage Check Failed
           if: steps.code-coverage-check.outcome == 'failure'
           run: exit 1
+
+    docker:
+        name: Containerization
+        needs: [unit-testing, code-coverage]
+        runs-on: ubuntu-latest
+        steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+
+        - name: Docker Hub Login
+          uses: docker/login-action@v3
+          with:
+            username: ${{ vars.DOCKERHUB_USERNAME }}
+            password: ${{ secrets.DOCKERHUB_TOKEN }}
