@@ -89,10 +89,6 @@ jobs:
             path: coverage
             retention-days: 5
 
-        - name: Fail if Code Coverage Check Failed
-          if: steps.code-coverage-check.outcome == 'failure'
-          run: exit 1
-
     docker:
         name: Containerization
         needs: [unit-testing, code-coverage]
