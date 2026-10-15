@@ -36,11 +36,10 @@ jobs:
           run: npm install
     
         - name: Unit Testing
-          id: nodejs-unit-testing-step
           run: npm test
           
         - name: Archive Test Result
-          if: failure() && (steps.nodejs-unit-testing-step.outcome == 'failure' || steps.nodejs-unit-testing-step.outcome == 'success')
+          if: always()
           uses: actions/upload-artifact@v4
           with:
             name: Mocha-Test-Result-Node-${{ matrix.nodejs_version }}-${{ matrix.operating_system }}
@@ -66,12 +65,18 @@ jobs:
           run: npm install
 
         - name: Check Code Coverage
+          id: code-coverage-check
           continue-on-error: true
           run: npm run coverage
 
         - name: Archive Coverage Report
+          if: always()
           uses: actions/upload-artifact@v4
           with:
             name: Code-Coverage-Result
             path: coverage
             retention-days: 5
+
+        - name: Fail if Code Coverage Check Failed
+          if: steps.code-coverage-check.outcome == 'failure'
+          run: exit 1
