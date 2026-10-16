@@ -92,6 +92,9 @@ jobs:
     docker:
         name: Containerization
         needs: [unit-testing, code-coverage]
+        permissions:
+          contents: read
+          packages: write
         runs-on: ubuntu-latest
         env:
           MONGO_URI: 'mongodb+srv://supercluster.d83jj.mongodb.net/superData'
