@@ -65,6 +65,9 @@ jobs:
 
     code-coverage:
         name: Code Coverage
+        container:
+          image: node:18
+          options: --user node
         runs-on: ubuntu-latest
         services:
           mongodb:
@@ -72,25 +75,25 @@ jobs:
             env:
               MONGO_INITDB_ROOT_USERNAME: ci-user
               MONGO_INITDB_ROOT_PASSWORD: ci-password
-            ports:
-              - 27017:27017
+            
             options: >-
+              --name mongo
               --health-cmd "mongosh --quiet --eval 'db.adminCommand(\"ping\")'"
               --health-interval 10s
               --health-timeout 5s
               --health-retries 5
         env:
-          MONGO_URI: mongodb://localhost:27017/superData?authSource=admin
+          MONGO_URI: mongodb://mongo:27017/superData?authSource=admin
           MONGO_USERNAME: ci-user
           MONGO_PASSWORD: ci-password
         steps:
         - name: Checkout Repository
           uses: actions/checkout@v4
 
-        - name: Setup NodeJS Version - 18
-          uses: actions/setup-node@v4
-          with:
-            node-version: 18
+        #- name: Setup NodeJS Version - 18
+        #  uses: actions/setup-node@v4
+        #  with:
+         #   node-version: 18
 
         - name: Cache NPM dependencies
           uses: actions/cache@v4
