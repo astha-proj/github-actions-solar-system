@@ -236,6 +236,7 @@ jobs:
           uses: helm/kind-action@v1.10.0
           with:
             cluster_name: kind
+            config: .github/kind-config.yaml
 
         - name: Install kubectl CLI
           uses: azure/setup-kubectl@v3
@@ -253,7 +254,14 @@ jobs:
             kubectl wait --namespace ingress-nginx \
               --for=condition=Ready pod \
               --selector=app.kubernetes.io/component=controller \
-              --timeout=180s
+              --timeout=180s || {
+                kubectl get pods --namespace ingress-nginx -o wide
+                kubectl describe pods --namespace ingress-nginx
+                kubectl logs --namespace ingress-nginx \
+                  --selector=app.kubernetes.io/component=controller \
+                  --all-containers=true --tail=100 || true
+                exit 1
+              }
 
         - name: Load Application Image into kind
           run: |
