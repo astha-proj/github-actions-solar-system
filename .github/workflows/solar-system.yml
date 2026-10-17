@@ -354,14 +354,32 @@ jobs:
               service/ingress-nginx-controller 8080:80 \
               > /tmp/solar-system-port-forward.log 2>&1 &
             for attempt in $(seq 1 30); do
-              if curl --fail --silent \
+              if curl --silent --show-error \
                 --header "Host: solar-system-${NAMESPACE}.127.0.0.1.nip.io" \
-                http://127.0.0.1:8080/live | grep -q '"status":"live"'; then
-                echo "Kubernetes ingress and app are live"
-                exit 0
+                --output /tmp/solar-system-response.json \
+                --write-out '%{http_code}' \
+                http://127.0.0.1:8080/live > /tmp/solar-system-http-status.txt; then
+                status=$(cat /tmp/solar-system-http-status.txt)
+                if [[ "$status" == "200" ]] && grep -q '"status":"live"' /tmp/solar-system-response.json; then
+                  echo "Kubernetes ingress and app are live"
+                  cat /tmp/solar-system-response.json
+                  exit 0
+                fi
               fi
               sleep 2
             done
+            echo "Ingress health check failed"
+            echo "HTTP status: $(cat /tmp/solar-system-http-status.txt 2>/dev/null || echo unavailable)"
+            echo "Response body:"
+            cat /tmp/solar-system-response.json 2>/dev/null || true
+            echo "Ingress and service details:"
+            kubectl describe ingress solar-system --namespace "$NAMESPACE" || true
+            kubectl get endpoints,services --namespace "$NAMESPACE" || true
+            echo "Ingress controller logs:"
+            kubectl logs --namespace ingress-nginx \
+              --selector=app.kubernetes.io/component=controller \
+              --all-containers=true --tail=100 || true
+            echo "Port-forward logs:"
             cat /tmp/solar-system-port-forward.log
-            kubectl get pods,services
+            kubectl get pods,services --namespace "$NAMESPACE"
             exit 1
