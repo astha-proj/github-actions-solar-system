@@ -363,14 +363,15 @@ jobs:
         - name: Test Kubernetes Deployment
           run: |
             kubectl port-forward --namespace ingress-nginx \
-              service/ingress-nginx-controller 8080:80 \
+              service/ingress-nginx-controller 8443:443 \
               > /tmp/solar-system-port-forward.log 2>&1 &
             for attempt in $(seq 1 30); do
               if curl --silent --show-error \
+                --insecure \
                 --header "Host: solar-system-${NAMESPACE}.127.0.0.1.nip.io" \
                 --output /tmp/solar-system-response.json \
                 --write-out '%{http_code}' \
-                http://127.0.0.1:8080/live > /tmp/solar-system-http-status.txt; then
+                https://127.0.0.1:8443/live > /tmp/solar-system-http-status.txt; then
                 status=$(cat /tmp/solar-system-http-status.txt)
                 if [[ "$status" == "200" ]] && grep -q '"status":"live"' /tmp/solar-system-response.json; then
                   echo "Kubernetes ingress and app are live"
