@@ -218,6 +218,9 @@ jobs:
         env:
           DOCKER_IMAGE: ghcr.io/${{ github.repository_owner }}/solar-system:${{ github.sha }}
           NAMESPACE: ${{ vars.NAMESPACE }}
+          MONGO_URI: mongodb://mongodb:27017/superData?authSource=admin
+          MONGO_USERNAME: ${{ vars.MONGO_USERNAME }}
+          MONGO_PASSWORD: ${{ secrets.MONGO_PASSWORD }}
         steps:
         - name: Checkout Repo
           uses: actions/checkout@v4
@@ -281,6 +284,10 @@ jobs:
               echo "REPLICAS must be set to a positive integer."
               exit 1
             fi
+            if [[ -z "$MONGO_USERNAME" || -z "$MONGO_PASSWORD" ]]; then
+              echo "Set the MONGO_USERNAME repository variable and MONGO_PASSWORD repository secret."
+              exit 1
+            fi
 
         - name: Replace Tokens in Development Manifests
           uses: cschleiden/replace-tokens@v1
@@ -301,19 +308,14 @@ jobs:
         - name: Create Development Namespace and MongoDB
           run: |
             kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
-            kubectl create secret generic mongo-db-creds \
-              --namespace "$NAMESPACE" \
-              --from-literal=MONGO_URI='mongodb://mongodb:27017/superData?authSource=admin' \
-              --from-literal=MONGO_USERNAME=ci-user \
-              --from-literal=MONGO_PASSWORD=ci-password
             kubectl create deployment mongodb \
               --namespace "$NAMESPACE" \
               --image=mongo:5.0 \
               --dry-run=client -o yaml | kubectl apply -f -
             kubectl set env deployment/mongodb \
               --namespace "$NAMESPACE" \
-              MONGO_INITDB_ROOT_USERNAME=ci-user \
-              MONGO_INITDB_ROOT_PASSWORD=ci-password
+              "MONGO_INITDB_ROOT_USERNAME=$MONGO_USERNAME" \
+              "MONGO_INITDB_ROOT_PASSWORD=$MONGO_PASSWORD"
             kubectl expose deployment mongodb \
               --namespace "$NAMESPACE" \
               --port=27017 --target-port=27017 \
@@ -323,7 +325,7 @@ jobs:
             mongo_ready=false
             for attempt in $(seq 1 30); do
               if kubectl exec deployment/mongodb --namespace "$NAMESPACE" -- \
-                mongosh --quiet --username ci-user --password ci-password \
+                mongosh --quiet --username "$MONGO_USERNAME" --password "$MONGO_PASSWORD" \
                 --authenticationDatabase admin superData --eval 'db.adminCommand("ping")' >/dev/null 2>&1; then
                 mongo_ready=true
                 break
@@ -335,11 +337,21 @@ jobs:
               exit 1
             fi
             kubectl exec deployment/mongodb --namespace "$NAMESPACE" -- \
-              mongosh --quiet --username ci-user --password ci-password \
+              mongosh --quiet --username "$MONGO_USERNAME" --password "$MONGO_PASSWORD" \
               --authenticationDatabase admin superData --eval \
               'db.planets.insertMany([{id:1,name:"Mercury"},{id:2,name:"Venus"},{id:3,name:"Earth"},{id:4,name:"Mars"},{id:5,name:"Jupiter"},{id:6,name:"Saturn"},{id:7,name:"Uranus"},{id:8,name:"Neptune"}])'
 
-        - name: Deploy Development Manifests
+        - name: Create MongoDB Secret
+          run: |
+            kubectl -n "$NAMESPACE" create secret generic mongo-db-creds \
+              --from-literal="MONGO_URI=$MONGO_URI" \
+              --from-literal="MONGO_USERNAME=$MONGO_USERNAME" \
+              --from-literal="MONGO_PASSWORD=$MONGO_PASSWORD" \
+              --save-config \
+              --dry-run=client \
+              -o yaml | kubectl apply -f -
+
+        - name: Deploy to Dev Env
           run: |
             kubectl apply -f kubernetes/development/
             kubectl rollout status deployment/solar-system \
