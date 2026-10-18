@@ -225,6 +225,7 @@ jobs:
           manifests_path: kubernetes/development
           ingress_host: solar-system-{namespace}.127.0.0.1.nip.io
         secrets:
+          MONGO_PASSWORD: ${{ secrets.MONGO_PASSWORD }}
           ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
     prod-deploy:
@@ -241,4 +242,5 @@ jobs:
           manifests_path: kubernetes/production
           ingress_host: solar-system.127.0.0.1.nip.io
         secrets:
+          MONGO_PASSWORD: ${{ secrets.MONGO_PASSWORD }}
           ghcr_token: ${{ secrets.GITHUB_TOKEN }}

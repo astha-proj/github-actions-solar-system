@@ -20,6 +20,9 @@ on:
         required: true
         type: string
     secrets:
+      MONGO_PASSWORD:
+        description: MongoDB password for the deployment
+        required: true
       ghcr_token:
         required: true
     outputs:
