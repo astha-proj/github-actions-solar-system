@@ -244,3 +244,23 @@ jobs:
         secrets:
           MONGO_PASSWORD: ${{ secrets.MONGO_PASSWORD }}
           ghcr_token: ${{ secrets.GITHUB_TOKEN }}
+
+    deployment-summary:
+        name: Deployment URL Summary
+        needs:
+          - dev-deploy
+          - prod-deploy
+        if: always() && (needs.dev-deploy.result == 'success' || needs.prod-deploy.result == 'success')
+        runs-on: ubuntu-latest
+        env:
+          DEV_INGRESS_URL: ${{ needs.dev-deploy.outputs.app_ingress_url }}
+          PROD_INGRESS_URL: ${{ needs.prod-deploy.outputs.app_ingress_url }}
+        steps:
+          - name: Add Deployment URLs to Summary
+            run: |
+              if [[ -n "$DEV_INGRESS_URL" ]]; then
+                echo "Development ingress URL tested during deployment: $DEV_INGRESS_URL (temporary; the kind cluster ended with the deployment job)." >> "$GITHUB_STEP_SUMMARY"
+              fi
+              if [[ -n "$PROD_INGRESS_URL" ]]; then
+                echo "Production ingress URL tested during deployment: $PROD_INGRESS_URL (temporary; the kind cluster ended with the deployment job)." >> "$GITHUB_STEP_SUMMARY"
+              fi
