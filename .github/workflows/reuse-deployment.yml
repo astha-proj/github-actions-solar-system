@@ -52,6 +52,25 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Validate Deployment Inputs
+        run: |
+          if [[ ! "$NAMESPACE" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]]; then
+            echo "NAMESPACE must be set to a valid Kubernetes namespace in the ${{ inputs.environment_name }} environment."
+            exit 1
+          fi
+          if [[ ! "$REPLICAS" =~ ^[1-9][0-9]*$ ]]; then
+            echo "REPLICAS must be set to a positive integer in the ${{ inputs.environment_name }} environment."
+            exit 1
+          fi
+          if [[ -z "$MONGO_USERNAME" ]]; then
+            echo "MONGO_USERNAME is missing. Define it as an environment variable in the ${{ inputs.environment_name }} environment."
+            exit 1
+          fi
+          if [[ -z "$MONGO_PASSWORD" ]]; then
+            echo "MONGO_PASSWORD is missing. Define it as an environment secret in the ${{ inputs.environment_name }} environment."
+            exit 1
+          fi
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -98,21 +117,6 @@ jobs:
 
       - name: Set Temporary Ingress Address
         run: echo "INGRESS_IP=127.0.0.1" >> "$GITHUB_ENV"
-
-      - name: Validate Deployment Inputs
-        run: |
-          if [[ ! "$NAMESPACE" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]]; then
-            echo "namespace must be a valid Kubernetes namespace."
-            exit 1
-          fi
-          if [[ ! "$REPLICAS" =~ ^[1-9][0-9]*$ ]]; then
-            echo "replicas must be a positive integer."
-            exit 1
-          fi
-          if [[ -z "$MONGO_USERNAME" || -z "$MONGO_PASSWORD" ]]; then
-            echo "MongoDB credentials must be supplied."
-            exit 1
-          fi
 
       - name: Replace Tokens in Deployment Manifests
         uses: cschleiden/replace-tokens@v1
