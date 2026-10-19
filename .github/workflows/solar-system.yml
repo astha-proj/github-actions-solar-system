@@ -41,14 +41,11 @@ jobs:
           with:
             node-version: ${{ matrix.nodejs_version }}
 
-        - name: Cache NPM dependencies
-          uses: actions/cache@v4
+        - name: Install and Cache NPM Dependencies
+          uses: ./.github/custom-actions/npm-actions
           with:
             path: node_modules
-            key: v2-${{ runner.os }}-node-${{ matrix.nodejs_version }}-modules-${{ hashFiles('package-lock.json') }}
-
-        - name: Install Dependencies
-          run: npm install
+            node_version: ${{ matrix.nodejs_version }}
 
         - name: Seed Non-Production Database
           run: node scripts/seed-test-db.js
@@ -93,14 +90,11 @@ jobs:
         #  with:
          #   node-version: 18
 
-        - name: Cache NPM dependencies
-          uses: actions/cache@v4
+        - name: Install and Cache NPM Dependencies
+          uses: ./.github/custom-actions/npm-actions
           with:
             path: node_modules
-            key: v2-${{ runner.os }}-node-18-modules-${{ hashFiles('package-lock.json') }}
-
-        - name: Install Dependencies
-          run: npm install
+            node_version: '18'
 
         - name: Seed Non-Production Database
           run: node scripts/seed-test-db.js
@@ -118,9 +112,9 @@ jobs:
             path: coverage
             retention-days: 5
 
-    reports-s3:
+    reports:
         needs: [code-coverage, unit-testing]
-        name: AWS S3 - Upload Reports
+        name: Collect and Upload Reports
         runs-on: ubuntu-latest
         continue-on-error: true
         steps:
@@ -151,8 +145,12 @@ jobs:
               cp coverage-report/cobertura-coverage.xml "reports-${GITHUB_SHA}/"
               ls -ltr "reports-${GITHUB_SHA}"
 
-          - name: Upload to AWS S3
-            run: echo "Uploading reports to AWS S3..."
+          - name: Upload Combined Reports
+            uses: actions/upload-artifact@v4
+            with:
+              name: Combined-Test-and-Coverage-Reports
+              path: reports-${{ github.sha }}
+              retention-days: 5
 
     docker:
         name: Containerization
