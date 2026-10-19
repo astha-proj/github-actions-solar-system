@@ -1,0 +1,96 @@
+name: Docker Build, Test, and Publish
+description: Build and test the application image, then publish it to Docker Hub and GHCR
+inputs:
+  dockerhub_image:
+    description: Fully qualified Docker Hub image tag
+    required: true
+  ghcr_image:
+    description: Fully qualified GitHub Container Registry image tag
+    required: true
+  dockerhub_username:
+    description: Docker Hub username
+    required: true
+  dockerhub_token:
+    description: Docker Hub access token
+    required: true
+  ghcr_username:
+    description: GitHub Container Registry username
+    required: true
+  ghcr_token:
+    description: GitHub Container Registry access token
+    required: true
+  mongo_username:
+    description: MongoDB service username for the image test
+    required: true
+  mongo_password:
+    description: MongoDB service password for the image test
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ inputs.dockerhub_username }}
+        password: ${{ inputs.dockerhub_token }}
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ inputs.ghcr_username }}
+        password: ${{ inputs.ghcr_token }}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image for testing
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        load: true
+        push: false
+        tags: ${{ inputs.dockerhub_image }}
+
+    - name: Test Docker image
+      shell: bash
+      env:
+        DOCKER_IMAGE: ${{ inputs.dockerhub_image }}
+        MONGO_USERNAME: ${{ inputs.mongo_username }}
+        MONGO_PASSWORD: ${{ inputs.mongo_password }}
+      run: |
+        docker run --detach --name solar-system-app \
+          --publish 3000:3000 \
+          --add-host=host.docker.internal:host-gateway \
+          --env MONGO_URI="mongodb://host.docker.internal:27017/superData?authSource=admin" \
+          --env "MONGO_USERNAME=$MONGO_USERNAME" \
+          --env "MONGO_PASSWORD=$MONGO_PASSWORD" \
+          "$DOCKER_IMAGE"
+
+        for attempt in $(seq 1 30); do
+          if curl --fail --silent --show-error http://127.0.0.1:3000/live; then
+            exit 0
+          fi
+          sleep 2
+        done
+
+        echo "Container health check failed; application logs follow:"
+        docker logs solar-system-app
+        exit 1
+
+    - name: Remove test container
+      if: always()
+      shell: bash
+      run: |
+        if docker container inspect solar-system-app >/dev/null 2>&1; then
+          docker rm --force solar-system-app
+        fi
+
+    - name: Publish Docker images
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: |
+          ${{ inputs.dockerhub_image }}
+          ${{ inputs.ghcr_image }}
