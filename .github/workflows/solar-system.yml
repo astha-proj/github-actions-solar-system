@@ -44,7 +44,7 @@ jobs:
         - name: Install and Cache NPM Dependencies
           uses: ./.github/custom-actions/npm-actions
           with:
-            path: node_modules
+            path: .
             node_version: ${{ matrix.nodejs_version }}
 
         - name: Seed Non-Production Database
@@ -93,7 +93,7 @@ jobs:
         - name: Install and Cache NPM Dependencies
           uses: ./.github/custom-actions/npm-actions
           with:
-            path: node_modules
+            path: .
             node_version: '18'
 
         - name: Seed Non-Production Database
