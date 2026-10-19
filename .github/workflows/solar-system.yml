@@ -41,11 +41,16 @@ jobs:
           with:
             node-version: ${{ matrix.nodejs_version }}
 
-        - name: Install and Cache NPM Dependencies
+        - name: Cache NPM dependencies
+          uses: actions/cache@v4
+          with:
+            path: ~/.npm
+            key: v3-${{ runner.os }}-node-${{ matrix.nodejs_version }}-npm-${{ hashFiles('package-lock.json') }}
+
+        - name: Install NPM Dependencies
           uses: ./.github/custom-actions/npm-actions
           with:
             path: .
-            node_version: ${{ matrix.nodejs_version }}
 
         - name: Seed Non-Production Database
           run: node scripts/seed-test-db.js
@@ -90,11 +95,16 @@ jobs:
         #  with:
          #   node-version: 18
 
-        - name: Install and Cache NPM Dependencies
+        - name: Cache NPM dependencies
+          uses: actions/cache@v4
+          with:
+            path: ~/.npm
+            key: v3-${{ runner.os }}-node-18-npm-${{ hashFiles('package-lock.json') }}
+
+        - name: Install NPM Dependencies
           uses: ./.github/custom-actions/npm-actions
           with:
             path: .
-            node_version: '18'
 
         - name: Seed Non-Production Database
           run: node scripts/seed-test-db.js
